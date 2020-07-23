@@ -1,83 +1,138 @@
 'use strict';
 
-var example_json = {
-    "hello": 3.2,
-    "Cargo": false,
-    "obj": {
-        "lala": "hello there",
-        "check": 1000, 
-    },
-    "vec": [
-        3, 
-        4, 
-        5,
-    ],
-}
+var edit_json = new Object();
 
-function test_print() {
-    print_json("jsoneditor", example_json);   
-}
-
-/* Given a contaienr for the json and a json, draw the json
+/* Given a contaienr for the json and a json (Object, not array), draw the json
  * Return true if it works, false if it doesn't
  */ 
-function print_json(container_id, data) {
+function populate_editor(container_id, data) {
     // Get an hold to the container of the json
     var container = document.getElementById(container_id);
     if (container == null) {
         return false; // No container no party
-    }
+    };
     // Empy the container
     container.innerHTML = "";
-    // Checking the data is an object
-    if (typeof data != "object") {
+    // Checking the data is an object (but not an array)
+    if (typeof data != "object" || Array.isArray(data)) {
         return false;
-    }
+    };
     // Creating the html tags
-    var obj = create_object("JSON", data);
+    var obj = sort_data("JSON", data);
     // Appending the tags
     container.appendChild(obj);
     return true
 }
 
+// Send the data to the correct constructor
+function sort_data(key, data) {
+    // Create an empty tag in case it doesn't match any type
+    var tag;
+    // Create a tag based on the type
+    if (typeof data == 'object') { // Object
+        tag = create_object_tag(key, data);
+    } else if (typeof data == 'function'){ // Function
+        tag = create_function_tag(key, data);
+    } else if (typeof data == 'undefined') { // Undefined
+        tag = create_undefined_tag(key, data);
+    } else if (typeof data == 'symbol') { // Symbol
+        tag = create_symbol_tag(key, data);
+    } else { // Primitive
+        tag = create_primitive_tag(key, data);
+    };
+    return tag;
+}
+
 /* Loop trought element in an object and put them on tags
  * Called recursively for each nested object
  * Return false if data is incorect
+ * Manages both maps and array
  */
-function create_object(key, data) {
-    // Is it an object?
-    if (typeof data != "object") {
-        return false;
-    };
-    // If there are > 0 keys, loop the object
+function create_object_tag(key, data) {
+    // Create the tag containing the objects
     var obj = document.createElement("div");
     obj.classList.add("jsonObj");
+    // Nulls are object that need to be managed
+    if (data == null) {
+        var tag = create_primitive_tag(key, data);
+        return tag;
+    }
+    // If there are > 0 keys, loop the object
     if (Object.keys(data).length > 0) {
         // For each element in the object, create a tag and append it to the object container
-        for (const key in data) {
-            var tag = create_element_tag(key, data[key]);
+        for (const inner_key in data) {
+            var tag = sort_data(inner_key, data[inner_key]);
             obj.appendChild(tag);
         };
     };
-    // Add brackets to the object
-    obj.innerHTML = key + ": {<br>" + obj.innerHTML + "}";
+    // Differentiate between array and object
+    var open, close;
+    if (Array.isArray(data)) {
+        open = "[";
+        close = "]";
+    } else {
+        open = "{";
+        close = "}";
+    };
+    // Add brackets/square bracket to the object
+    obj.innerHTML = key + ": " + open + "<br>" + obj.innerHTML + close;
     // Return the obj
-    console.log(obj);
     return obj;
 }
 
 /* Create a tag based on the element recieved
- * Function created to be used by the function create_object()
+ * Function created to be used by the function create_object_tag()
  */
-function create_element_tag(key, data) {
-    // If the data is an object call the create_object
-    if (typeof data == "object") {
-        return create_object(key,data);
-    };
-    // Otherwise create the element
+function create_primitive_tag(key, data) {
+    // Create general tag 
+    var tag = document.createElement("div");
+    tag.classList.add("jsonPrimitive");
+    // Key
+    var tag_key = document.createElement("div");
+    tag_key.innerHTML = '"'+key+'"';
+    // Separator
+    var tag_separator = document.createElement("div");
+    tag_separator.innerHTML = ": ";
+    // Data
+    var tag_data = document.createElement("div");
+    tag_data.innerHTML = data;
+    // Appending children
+    tag.appendChild(tag_key);
+    tag.appendChild(tag_separator);
+    tag.appendChild(tag_data);
+    return tag;
+}
+
+/* Manage the case where the data is a function
+ * Show the object key and function name 
+ * //TODO: Has to have a distinc style to differentiate functions
+ */
+function create_function_tag(key, data) {
     var tag = document.createElement("div");
     tag.classList.add("jsonElement");
-    tag.innerHTML = key + ": " + data;
-    console.log(tag);
+    tag.innerHTML = key + ": " + data.name + "()";
+    return tag;
+}
+
+/* Manage the case where the data is undefined
+ * //TODO: Has to have a distinc style to differentiate functions
+ */
+function create_undefined_tag(key, data) {
+    var tag = document.createElement("div");
+    tag.classList.add("jsonElement");
+    tag.innerHTML = key + ": undefined";
+    return tag;
+}
+/* // TODO: Manage the case where the data is a function
+ *
+ */
+function create_symbol_tag(key, data) {
+    var tag = create_empty_tag();
+    return tag;
+}
+
+// Create and empy tag
+function create_empty_tag() {
+    var tag = document.createElement('div');
     return tag;
 }
